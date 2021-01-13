@@ -1,0 +1,9 @@
+{
+    "name": "cityfibre/notifications",
+    "description": "Notification package for all portals",
+    "require": {
+        "guzzlehttp/guzzle": "^6.3",
+        "superbalist/php-pubsub-kafka": "^2.0",
+        "entanet/laravel-pubsub": "^4.0"
+    }
+}
