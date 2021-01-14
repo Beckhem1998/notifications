@@ -41,12 +41,12 @@ class PortalNotificationService
      *
      * @param array $data - Notification data
      *
-     * @throws InvalidAppNameForNotificationFromException
+     * @return void
      * @throws PortalNotificationFieldNotSetException
      *
-     * @return void
+     * @throws InvalidAppNameForNotificationFromException
      */
-    public function publish(array $data)
+    public function publish(array $data): void
     {
         // Validate the given payload
         $this->validatePayload($data);
@@ -66,9 +66,9 @@ class PortalNotificationService
      *
      * @param int $page - Page Number
      *
+     * @return false|string
      * @throws GuzzleException
      *
-     * @return false|string
      */
     public function show(int $page)
     {
@@ -77,7 +77,6 @@ class PortalNotificationService
 
         // Foreach notification
         foreach ($notifications->data as $notification) {
-
             $application = ApplicationModel::where('name', $notification->from)->first();
 
             // Set the from icon
@@ -96,11 +95,11 @@ class PortalNotificationService
      *
      * @param int $page - Page number
      *
+     * @return string
      * @throws GuzzleException
      *
-     * @return string
      */
-    public function fetch(int $page)
+    public function fetch(int $page): string
     {
         // get the user model from the logged in user
         $user = Auth::user();
@@ -111,12 +110,16 @@ class PortalNotificationService
         // Send the post request to the notification service
         $response = $guzzleClient->request(
             'GET',
-            config('notifications.url') . '/api/notifications/' . $user->customer_id . '/' . $user->email . '?page=' . $page, [
-            'headers' => [
-                'Authorization' => 'Bearer ' . config('notifications.token'),
-                'Accept' => 'application/json'
-            ],
-        ]);
+            config(
+                'notifications.url'
+            ) . '/api/notifications/' . $user->customer_id . '/' . $user->email . '?page=' . $page,
+            [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . config('notifications.token'),
+                    'Accept' => 'application/json'
+                ],
+            ]
+        );
 
         // Return the JSON encoded paginated notifications
         return $response->getBody()->getContents();
@@ -130,7 +133,7 @@ class PortalNotificationService
      *
      * @return void
      */
-    public function read(array $notifications)
+    public function read(array $notifications): void
     {
         // Get the user
         $user = Auth::user()->email;
@@ -140,7 +143,6 @@ class PortalNotificationService
 
         // Foreach notification ID
         foreach ($notifications as $notification) {
-
             // Send the topic with the notification id, user email and the timestamp
             $this->pubSubAdapter->publish(
                 config('notifications.notification_read_topic'),
@@ -153,29 +155,22 @@ class PortalNotificationService
         }
     }
 
-    public function getIcon(string $appName): string
-    {
-        return ApplicationModel::where('name', $appName)
-            ->first()->application_icon ?? 'zmdi zmdi-account';
-    }
-
     /**
      * Process the from parameter from the app name config.
      *
      * @private
      *
+     * @return string
      * @throws InvalidAppNameForNotificationFromException
      *
-     * @return string
      */
-    private function processFrom()
+    private function processFrom(): string
     {
         // Get the from name
         $appName = config('notifications.from');
 
-        // If the app name is'nt set
+        // If the app name isn't set
         if (empty($appName)) {
-
             // Throw the exception for invalid app name
             throw new InvalidAppNameForNotificationFromException(
                 sprintf(
@@ -185,7 +180,7 @@ class PortalNotificationService
             );
         }
 
-        // Return the lowercase app name, spaces replaced with underscores
+        // Return the lowercase app name
         return $appName;
     }
 
@@ -196,9 +191,9 @@ class PortalNotificationService
      *
      * @param array $payload - new notification payload
      *
+     * @return bool
      * @throws PortalNotificationFieldNotSetException
      *
-     * @return bool
      */
     private function validatePayload(array $payload)
     {
@@ -207,10 +202,8 @@ class PortalNotificationService
 
         // Foreach needed field
         foreach ($neededFields as $neededField) {
-
             // If the field is not set or is empty
-            if (! isset($payload[$neededField]) || ! strlen($payload[$neededField])) {
-
+            if (!isset($payload[$neededField]) || !strlen($payload[$neededField])) {
                 // Throw exception for needed field
                 throw new PortalNotificationFieldNotSetException(
                     sprintf(

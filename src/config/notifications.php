@@ -4,6 +4,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Notification Service URL
+    |--------------------------------------------------------------------------
+    |
+    | URL for the notification service.
+    |
+    */
+    'url' => env('NOTIFICATION_SERVICE_URL', null),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notification Service API Token
+    |--------------------------------------------------------------------------
+    |
+    | Bearer API token to send across to the notification service.
+    |
+    */
+    'token' => env('NOTIFICATION_API_TOKEN', null),
+
+    /*
+    |--------------------------------------------------------------------------
     | Notification Created Topic
     |--------------------------------------------------------------------------
     |
@@ -30,6 +50,6 @@ return [
     | From string to show on the notification in the portal E.g Billing Portal
     |
     */
-    'from' => 'Billing Portal'
+    'from' => env('UNIFY_APPLICATION_NAME', '')
 
 ];
