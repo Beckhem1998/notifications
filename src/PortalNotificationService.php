@@ -3,9 +3,9 @@
 namespace cityfibre\notifications;
 
 use Carbon\Carbon;
-use cityfibre\defaultPortalTemplate\Models\ApplicationModel;
+use cityfibre\notifications\resources\InvalidNotificationLinkException;
 use GuzzleHttp\Exception\GuzzleException;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Superbalist\PubSub\PubSubAdapterInterface;
 use GuzzleHttp\Client;
 
@@ -22,7 +22,7 @@ class PortalNotificationService
      *
      * @var PubSubAdapterInterface $pubSubAdapter
      */
-    public $pubSubAdapter;
+    public PubSubAdapterInterface $pubSubAdapter;
 
     /**
      * PortalNotificationService constructor.
@@ -45,6 +45,7 @@ class PortalNotificationService
      * @throws PortalNotificationFieldNotSetException
      *
      * @throws InvalidAppNameForNotificationFromException
+     * @throws InvalidNotificationLinkException
      */
     public function publish(array $data): void
     {
@@ -53,6 +54,9 @@ class PortalNotificationService
 
         // Set the portal the notification is coming form
         $data['from'] = $this->processFrom();
+
+        // Parse the link to a full URL based on App URL
+        $data['link'] = url(config('app.url') . $data['link']);
 
         // Publish the notification_created event
         $this->pubSubAdapter->publish(
@@ -75,17 +79,6 @@ class PortalNotificationService
         // JSON decode the notifications
         $notifications = json_decode($this->fetch($page));
 
-        // Foreach notification
-        foreach ($notifications->data as $notification) {
-            $application = ApplicationModel::where('name', $notification->from)->first();
-
-            // Set the from icon
-            $notification->from_icon = $application->application_icon ?? 'zmdi zmdi-account';
-
-            // Set the application URL
-            $notification->link = env($application->application_url) . $notification->link;
-        }
-
         // Return the JSON encoded notifications
         return json_encode($notifications);
     }
@@ -102,7 +95,7 @@ class PortalNotificationService
     public function fetch(int $page): string
     {
         // get the user model from the logged in user
-        $user = Auth::user();
+        $user = auth()->user();
 
         // Get the guzzle client
         $guzzleClient = new Client();
@@ -136,7 +129,7 @@ class PortalNotificationService
     public function read(array $notifications): void
     {
         // Get the user
-        $user = Auth::user()->email;
+        $user = auth()->user();
 
         // Get the read timestamp
         $read_timestamp = Carbon::now()->format("y-m-d H:i:s");
@@ -148,7 +141,7 @@ class PortalNotificationService
                 config('notifications.notification_read_topic'),
                 [
                     'notification_id' => $notification,
-                    'user_email' => $user,
+                    'user_email' => $user->email,
                     'read_timestamp' => $read_timestamp
                 ]
             );
@@ -170,17 +163,14 @@ class PortalNotificationService
         $appName = config('notifications.from');
 
         // If the app name isn't set
-        if (empty($appName)) {
+        if (! strlen($appName)) {
             // Throw the exception for invalid app name
             throw new InvalidAppNameForNotificationFromException(
-                sprintf(
-                    "The notification from [%s] is invalid, correct example: Billing Portal.",
-                    $appName
-                )
+                'The notification from is not set.'
             );
         }
 
-        // Return the lowercase app name
+        // Return the app name
         return $appName;
     }
 
@@ -193,12 +183,13 @@ class PortalNotificationService
      *
      * @return bool
      * @throws PortalNotificationFieldNotSetException
+     * @throws InvalidNotificationLinkException
      *
      */
     private function validatePayload(array $payload)
     {
         // Set the needed fields
-        $neededFields = ['message', 'link', 'customer_id'];
+        $neededFields = ['message', 'link', 'customer_id', 'icon'];
 
         // Foreach needed field
         foreach ($neededFields as $neededField) {
@@ -212,6 +203,14 @@ class PortalNotificationService
                     )
                 );
             }
+        }
+
+        // If the link doesnt start with a forward slash
+        if (! Str::startsWith($payload['link'], '/')) {
+            // Throw invalid link exception
+            throw new InvalidNotificationLinkException(
+                sprintf('Notification link [%s] is invalid, link must start with /', $payload['link'])
+            );
         }
 
         // Return true for success

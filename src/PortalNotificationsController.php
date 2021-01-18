@@ -19,7 +19,7 @@ class PortalNotificationsController extends Controller
      *
      * @var PortalNotificationService $service
      */
-    public $service;
+    public PortalNotificationService $service;
 
     /**
      * PortalNotificationsController constructor.
@@ -45,11 +45,6 @@ class PortalNotificationsController extends Controller
     public function show(int $page)
     {
        return $this->service->show($page);
-    }
-
-    public function getIcon(string $appName): string
-    {
-        return $this->service->getIcon($appName);
     }
 
     /**
